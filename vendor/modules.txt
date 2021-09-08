@@ -233,6 +233,9 @@ github.com/hashicorp/hcl/json/token
 github.com/hinshun/vt10x
 # github.com/imdario/mergo v0.3.9
 github.com/imdario/mergo
+# github.com/in-toto/in-toto-golang v0.2.0
+github.com/in-toto/in-toto-golang/in_toto
+github.com/in-toto/in-toto-golang/pkg/ssl
 # github.com/inconshreveable/mousetrap v1.0.0
 github.com/inconshreveable/mousetrap
 # github.com/joho/godotenv v1.3.0
@@ -317,6 +320,8 @@ github.com/prometheus/statsd_exporter/pkg/mapper
 github.com/prometheus/statsd_exporter/pkg/mapper/fsm
 # github.com/russross/blackfriday v1.5.2
 github.com/russross/blackfriday
+# github.com/shibumi/go-pathspec v1.2.0
+github.com/shibumi/go-pathspec
 # github.com/sirupsen/logrus v1.7.0
 github.com/sirupsen/logrus
 # github.com/spf13/afero v1.2.2
@@ -537,7 +542,7 @@ golang.org/x/oauth2/jwt
 # golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 golang.org/x/sync/errgroup
 golang.org/x/sync/semaphore
-# golang.org/x/sys v0.0.0-20210603081109-ebe580a85c40
+# golang.org/x/sys v0.0.0-20210616094352-59db8d763f22
 golang.org/x/sys/internal/unsafeheader
 golang.org/x/sys/plan9
 golang.org/x/sys/unix
