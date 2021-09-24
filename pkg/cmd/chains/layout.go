@@ -12,7 +12,7 @@ func layoutCommand(p cli.Params) *cobra.Command {
 
 	c := &cobra.Command{
 		Use:   "layout",
-		Short: "Print layout for a specific pipeline",
+		Short: "Print layout for a specific pipelinerun",
 		Long:  longHelp,
 		Annotations: map[string]string{
 			"commandType": "main",
@@ -20,11 +20,11 @@ func layoutCommand(p cli.Params) *cobra.Command {
 		Args: cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Get the pipeline.
-			pipelineName := args[0]
+			pipelinerunName := args[0]
 			path := args[1]
 
 			// Extract and decode the value of the payload annotation.
-			layoutPath, err := createIntotoLayout(p, pipelineName, path)
+			layoutPath, err := createIntotoLayout(p, pipelinerunName, path)
 			if err != nil {
 				return err
 			}
