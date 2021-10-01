@@ -1,6 +1,7 @@
 package chains
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -15,6 +16,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
@@ -36,7 +38,7 @@ func getClient(p cli.Params) *cli.Clients {
 	}
 }
 
-// Create layout for specific taskrun.
+// Create layout for specific pipelinerun.
 func createIntotoLayout(p cli.Params, pipelineRunName string, path string) (string, error) {
 	cs := getClient(p)
 	// Get the current time for layout file creation
@@ -88,7 +90,7 @@ func container(stepState v1beta1.StepState, tr *v1beta1.TaskRun) v1beta1.Step {
 	return v1beta1.Step{}
 }
 
-// Get the task from a pipeline append together to be passed into intoto layout
+// Get the taskruns from a pipelinerun append together to be passed into intoto layout
 func getIntotoSteps(p cli.Params, pr v1beta1.PipelineRun) ([]toto.Step, error) {
 	cs := getClient(p)
 	var intotoSteps []toto.Step
@@ -107,11 +109,13 @@ func getIntotoSteps(p cli.Params, pr v1beta1.PipelineRun) ([]toto.Step, error) {
 			expMats = append(expMats, [][]string{{"ALLOW", gitURL}}...)
 		}
 
+		params := getParams(tr)
+		resources := getResources(p)
 		for _, step := range tr.Status.Steps {
 
 			intotoStep := toto.Step{
 				Type:            "step",
-				ExpectedCommand: getExpectedCommand(container(step, tr)),
+				ExpectedCommand: getExpectedCommand(container(step, tr), params, resources),
 				SupplyChainItem: toto.SupplyChainItem{
 					Name:              step.Name,
 					ExpectedMaterials: append(expMats, getExpectedMaterials(step)...),
@@ -124,7 +128,7 @@ func getIntotoSteps(p cli.Params, pr v1beta1.PipelineRun) ([]toto.Step, error) {
 	return intotoSteps, nil
 }
 
-// Get the task from a pipeline append together to be passed into intoto layout
+// Get the taskruns from a pipelinerun append together for the inspection section of the layout
 func getIntotoInspect(p cli.Params, pr v1beta1.PipelineRun) ([]toto.Inspection, error) {
 	cs := getClient(p)
 	var intotoInsepcts []toto.Inspection
@@ -133,6 +137,7 @@ func getIntotoInspect(p cli.Params, pr v1beta1.PipelineRun) ([]toto.Inspection, 
 		if err != nil {
 			return nil, fmt.Errorf("failed to get tr %s: %v", taskrunName, err)
 		}
+
 		for _, step := range tr.Status.Steps {
 
 			intotoInspect := toto.Inspection{
@@ -152,12 +157,40 @@ func getIntotoInspect(p cli.Params, pr v1beta1.PipelineRun) ([]toto.Inspection, 
 }
 
 // Get the commands and arguments from a pipeline step and append together to be passed into intoto layout
-func getExpectedCommand(step v1beta1.Step) []string {
+func getExpectedCommand(step v1beta1.Step, params map[string]string, resources map[string]v1alpha1.PipelineResource) []string {
 	var combined []string
 
-	// combine the command and arguments into one slice
+	// combine the command and arguments into one
 	combined = append(combined, step.Command...)
-	combined = append(combined, step.Args...)
+	// combined = append(combined, step.Args...)
+	fmt.Println("params", params)
+	for _, arg := range step.Args {
+		if strings.Contains(arg, "params") {
+			if strings.Contains(arg, "=") {
+				argSplit := strings.Split(arg, "=")
+				t := strings.ReplaceAll(argSplit[1], "$(params.", "")
+				t = strings.ReplaceAll(t, ")", "")
+				fmt.Println("arg Value: ", t)
+				if params[t] != "" {
+					argComplete := argSplit[0] + "=" + params[t]
+					combined = append(combined, argComplete)
+				}
+			} else {
+				t := strings.ReplaceAll(arg, "$(params.", "")
+				t = strings.ReplaceAll(t, ")", "")
+				fmt.Println("arg Value: ", t)
+				if params[t] != "" {
+					argComplete := params[t]
+					combined = append(combined, argComplete)
+				}
+			}
+
+			//} else if strings.Contains(arg, "resources") {
+
+		} else {
+			combined = append(combined, arg)
+		}
+	}
 
 	return combined
 }
@@ -208,6 +241,79 @@ func getExpectedMaterials(trs v1beta1.StepState) [][]string {
 	return expMats
 }
 
+// Get pipelineresoures that are used and search and replace into argument for steps
+func getResources(p cli.Params) map[string]v1alpha1.PipelineResource {
+
+	resources := make(map[string]v1alpha1.PipelineResource)
+	cs := getClient(p)
+	prec := cs.Resource.TektonV1alpha1().PipelineResources(p.Namespace())
+	pres, err := prec.List(context.Background(), v1.ListOptions{})
+	if err != nil {
+		return nil
+	}
+
+	if len(pres.Items) > 0 {
+		for _, res := range pres.Items {
+			resources[res.ObjectMeta.Name] = res
+		}
+	}
+
+	return resources
+}
+
+// Get parameters from tasks that can be substituted into the commands and arguments
+func getParams(tr *v1beta1.TaskRun) map[string]string {
+
+	/* inputs := make(map[string]string)
+	for _, input := range tr.Spec.Resources.Inputs {
+		for _, rr := range tr.Status.ResourcesResult {
+			if rr.ResourceName != input.Name {
+				continue
+			}
+			inputs[rr.Key] = rr.Value
+		}
+		if input.ResourceSpec != nil {
+			for _, param := range input.ResourceSpec.Params {
+				inputs[param.Name] = param.Value
+			}
+		}
+
+	}
+
+	// go through resourcesResult
+	outputs := make(map[string]string)
+	for _, output := range tr.Spec.Resources.Outputs {
+		name := output.Name
+		if output.PipelineResourceBinding.ResourceSpec != nil {
+			for _, s := range tr.Status.ResourcesResult {
+				if s.ResourceName == name {
+					outputs[s.Key] = s.Value
+				}
+			}
+		}
+	} */
+
+	// get parameters
+	params := make(map[string]string)
+	for _, p := range tr.Spec.Params {
+		params[p.Name] = p.Value.StringVal
+	}
+	// add params
+	/* if ts := tr.Status.TaskSpec; ts != nil {
+		for _, p := range ts.Params {
+			if p.Default != nil {
+				v := p.Default.StringVal
+				if v == "" {
+					v = fmt.Sprintf("%v", p.Default.ArrayVal)
+				}
+				params[p.Name] = v
+			}
+		}
+	} */
+
+	return params
+}
+
 // getPackageURLDocker takes an image id and creates a package URL string
 // based from it.
 // https://github.com/package-url/purl-spec
@@ -255,7 +361,7 @@ func getOCIImageID(name, alg, digest string) string {
 	return fmt.Sprintf("docker://%s@%s:%s", name, alg, digest)
 }
 
-// Get the prodcuts from a pipeline task and append together to be passed into intoto layout
+// Get the prodcuts from a pipeline taskrun and append together to be passed into intoto layout
 func getExpectedProducts(tr *v1beta1.TaskRun, inspection bool) [][]string {
 	var expProds [][]string
 
