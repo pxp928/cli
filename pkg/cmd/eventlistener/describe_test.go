@@ -19,20 +19,30 @@ import (
 	"testing"
 
 	"github.com/tektoncd/cli/pkg/test"
+	cb "github.com/tektoncd/cli/pkg/test/builder"
+	testDynamic "github.com/tektoncd/cli/pkg/test/dynamic"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+	triggersv1beta1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	triggertest "github.com/tektoncd/triggers/test"
 	"gotest.tools/v3/golden"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"knative.dev/pkg/apis"
-	duckv1alpha1 "knative.dev/pkg/apis/duck/v1alpha1"
-	beta1 "knative.dev/pkg/apis/duck/v1beta1"
+	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
 )
 
 func TestEventListenerDescribe_InvalidNamespace(t *testing.T) {
 	cs := test.SeedTestResources(t, triggertest.Resources{})
-	p := &test.Params{Triggers: cs.Triggers, Kube: cs.Kube}
+	cs.Triggers.Resources = cb.TriggersAPIResourceList("v1beta1", []string{"eventlistener"})
+	tdc := testDynamic.Options{}
+	var utts []runtime.Object
+	dc, err := tdc.Client(utts...)
+	if err != nil {
+		t.Errorf("unable to create dynamic client: %v", err)
+	}
+
+	p := &test.Params{Tekton: cs.Pipeline, Kube: cs.Kube, Triggers: cs.Triggers, Dynamic: dc}
 
 	eventListener := Command(p)
 	out, err := test.ExecuteCommand(eventListener, "desc", "bar", "-n", "invalid")
@@ -48,7 +58,15 @@ func TestEventListenerDescribe_NonExistedName(t *testing.T) {
 			Name: "ns",
 		},
 	}}})
-	p := &test.Params{Triggers: cs.Triggers, Kube: cs.Kube}
+	cs.Triggers.Resources = cb.TriggersAPIResourceList("v1beta1", []string{"eventlistener"})
+	tdc := testDynamic.Options{}
+	var utts []runtime.Object
+	dc, err := tdc.Client(utts...)
+	if err != nil {
+		t.Errorf("unable to create dynamic client: %v", err)
+	}
+
+	p := &test.Params{Tekton: cs.Pipeline, Kube: cs.Kube, Triggers: cs.Triggers, Dynamic: dc}
 
 	eventListener := Command(p)
 	out, err := test.ExecuteCommand(eventListener, "desc", "bar", "-n", "ns")
@@ -64,7 +82,15 @@ func TestEventListenerDescribe_NoArgProvided(t *testing.T) {
 			Name: "ns",
 		},
 	}}})
-	p := &test.Params{Triggers: cs.Triggers, Kube: cs.Kube}
+	cs.Triggers.Resources = cb.TriggersAPIResourceList("v1beta1", []string{"eventlistener"})
+	tdc := testDynamic.Options{}
+	var utts []runtime.Object
+	dc, err := tdc.Client(utts...)
+	if err != nil {
+		t.Errorf("unable to create dynamic client: %v", err)
+	}
+
+	p := &test.Params{Tekton: cs.Pipeline, Kube: cs.Kube, Triggers: cs.Triggers, Dynamic: dc}
 
 	eventListener := Command(p)
 	out, err := test.ExecuteCommand(eventListener, "desc", "-n", "ns")
@@ -75,7 +101,7 @@ func TestEventListenerDescribe_NoArgProvided(t *testing.T) {
 }
 
 func TestEventListenerDescribe_WithMinRequiredField(t *testing.T) {
-	els := []*v1alpha1.EventListener{
+	els := []*triggersv1beta1.EventListener{
 		{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "el1",
@@ -89,24 +115,24 @@ func TestEventListenerDescribe_WithMinRequiredField(t *testing.T) {
 
 func TestEventListenerDescribe_OneTriggerWithOneClusterTriggerBinding(t *testing.T) {
 	triggerTemplateRef := "tt1"
-	els := []*v1alpha1.EventListener{
+	els := []*triggersv1beta1.EventListener{
 		{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "el1",
 				Namespace: "ns",
 			},
-			Spec: v1alpha1.EventListenerSpec{
-				Triggers: []v1alpha1.EventListenerTrigger{
+			Spec: triggersv1beta1.EventListenerSpec{
+				Triggers: []triggersv1beta1.EventListenerTrigger{
 					{
-						Template: &v1alpha1.TriggerSpecTemplate{
+						Template: &triggersv1beta1.TriggerSpecTemplate{
 							Ref:        &triggerTemplateRef,
-							APIVersion: "v1alpha1",
+							APIVersion: "v1beta1",
 						},
-						Bindings: []*v1alpha1.EventListenerBinding{
+						Bindings: []*triggersv1beta1.EventListenerBinding{
 							{
 								Ref:        "tb1",
 								Kind:       "ClusterTriggerBinding",
-								APIVersion: "v1alpha1",
+								APIVersion: "v1beta1",
 							},
 						},
 					},
@@ -120,41 +146,39 @@ func TestEventListenerDescribe_OneTriggerWithOneClusterTriggerBinding(t *testing
 
 func TestEventListenerDescribe_WithOutputStatusURLAndName(t *testing.T) {
 	triggerTemplateRef := "tt1"
-	els := []*v1alpha1.EventListener{
+	els := []*triggersv1beta1.EventListener{
 		{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "el1",
 				Namespace: "ns",
 			},
-			Spec: v1alpha1.EventListenerSpec{
-				Triggers: []v1alpha1.EventListenerTrigger{
+			Spec: triggersv1beta1.EventListenerSpec{
+				Triggers: []triggersv1beta1.EventListenerTrigger{
 					{
-						Template: &v1alpha1.TriggerSpecTemplate{
+						Template: &triggersv1beta1.TriggerSpecTemplate{
 							Ref:        &triggerTemplateRef,
-							APIVersion: "v1alpha1",
+							APIVersion: "v1beta1",
 						},
-						Bindings: []*v1alpha1.EventListenerBinding{
+						Bindings: []*triggersv1beta1.EventListenerBinding{
 							{
 								Ref:        "tb1",
 								Kind:       "ClusterTriggerBinding",
-								APIVersion: "v1alpha1",
+								APIVersion: "v1beta1",
 							},
 						},
 					},
 				},
 			},
-			Status: v1alpha1.EventListenerStatus{
-				AddressStatus: duckv1alpha1.AddressStatus{
-					Address: &duckv1alpha1.Addressable{
-						Addressable: beta1.Addressable{
-							URL: &apis.URL{
-								Scheme: "http",
-								Host:   "el-listener.default.svc.cluster.local",
-							},
+			Status: triggersv1beta1.EventListenerStatus{
+				AddressStatus: duckv1beta1.AddressStatus{
+					Address: &duckv1beta1.Addressable{
+						URL: &apis.URL{
+							Scheme: "http",
+							Host:   "el-listener.default.svc.cluster.local",
 						},
 					},
 				},
-				Configuration: v1alpha1.EventListenerConfig{
+				Configuration: triggersv1beta1.EventListenerConfig{
 					GeneratedResourceName: "el-listener",
 				},
 			},
@@ -167,21 +191,21 @@ func TestEventListenerDescribe_WithOutputStatusURLAndName(t *testing.T) {
 func TestEventListenerDescribe_OneTriggerWithOneTriggerBinding(t *testing.T) {
 	triggerTemplateRef := "tt1"
 
-	els := []*v1alpha1.EventListener{
+	els := []*triggersv1beta1.EventListener{
 		{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "el1",
 				Namespace: "ns",
 			},
-			Spec: v1alpha1.EventListenerSpec{
+			Spec: triggersv1beta1.EventListenerSpec{
 				ServiceAccountName: "trigger-sa",
-				Triggers: []v1alpha1.EventListenerTrigger{
+				Triggers: []triggersv1beta1.EventListenerTrigger{
 					{
-						Template: &v1alpha1.TriggerSpecTemplate{
+						Template: &triggersv1beta1.TriggerSpecTemplate{
 							Ref:        &triggerTemplateRef,
-							APIVersion: "v1alpha1",
+							APIVersion: "v1beta1",
 						},
-						Bindings: []*v1alpha1.EventListenerBinding{
+						Bindings: []*triggersv1beta1.EventListenerBinding{
 							{
 								Ref:        "tb1",
 								Kind:       "TriggerBinding",
@@ -199,20 +223,20 @@ func TestEventListenerDescribe_OneTriggerWithOneTriggerBinding(t *testing.T) {
 
 func TestEventListenerDescribe_OneTriggerWithMultipleTriggerBinding(t *testing.T) {
 	triggerTemplateRef := "tt1"
-	els := []*v1alpha1.EventListener{
+	els := []*triggersv1beta1.EventListener{
 		{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "el1",
 				Namespace: "ns",
 			},
-			Spec: v1alpha1.EventListenerSpec{
-				Triggers: []v1alpha1.EventListenerTrigger{
+			Spec: triggersv1beta1.EventListenerSpec{
+				Triggers: []triggersv1beta1.EventListenerTrigger{
 					{
-						Template: &v1alpha1.TriggerSpecTemplate{
+						Template: &triggersv1beta1.TriggerSpecTemplate{
 							Ref:        &triggerTemplateRef,
-							APIVersion: "v1alpha1",
+							APIVersion: "v1beta1",
 						},
-						Bindings: []*v1alpha1.EventListenerBinding{
+						Bindings: []*triggersv1beta1.EventListenerBinding{
 							{
 								Ref:        "tb1",
 								Kind:       "TriggerBinding",
@@ -221,12 +245,12 @@ func TestEventListenerDescribe_OneTriggerWithMultipleTriggerBinding(t *testing.T
 							{
 								Ref:        "tb2",
 								Kind:       "ClusterTriggerBinding",
-								APIVersion: "v1alpha1",
+								APIVersion: "v1beta1",
 							},
 							{
 								Ref:        "tb3",
 								Kind:       "TriggerBinding",
-								APIVersion: "v1alpha1",
+								APIVersion: "v1beta1",
 							},
 						},
 					},
@@ -241,24 +265,24 @@ func TestEventListenerDescribe_OneTriggerWithMultipleTriggerBinding(t *testing.T
 func TestEventListenerDescribe_OneTriggerWithTriggerBindingName(t *testing.T) {
 	bindingval := "somevalue"
 
-	els := []*v1alpha1.EventListener{
+	els := []*triggersv1beta1.EventListener{
 		{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "el1",
 				Namespace: "ns",
 			},
-			Spec: v1alpha1.EventListenerSpec{
-				Triggers: []v1alpha1.EventListenerTrigger{
+			Spec: triggersv1beta1.EventListenerSpec{
+				Triggers: []triggersv1beta1.EventListenerTrigger{
 					{
-						Bindings: []*v1alpha1.EventListenerBinding{
+						Bindings: []*triggersv1beta1.EventListenerBinding{
 							{
 								Name:  "binding",
 								Value: &bindingval,
 							},
 						},
-						Template: &v1alpha1.EventListenerTemplate{
+						Template: &triggersv1beta1.EventListenerTemplate{
 							Ref:        nil,
-							APIVersion: "v1alpha1",
+							APIVersion: "v1beta1",
 							Spec:       nil,
 						},
 						Name: "tt1",
@@ -275,24 +299,24 @@ func TestEventListenerDescribe_TriggerWithTriggerTemplateRef(t *testing.T) {
 	bindingval := "somevalue"
 	tempRef := "someref"
 
-	els := []*v1alpha1.EventListener{
+	els := []*triggersv1beta1.EventListener{
 		{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "el1",
 				Namespace: "ns",
 			},
-			Spec: v1alpha1.EventListenerSpec{
-				Triggers: []v1alpha1.EventListenerTrigger{
+			Spec: triggersv1beta1.EventListenerSpec{
+				Triggers: []triggersv1beta1.EventListenerTrigger{
 					{
-						Bindings: []*v1alpha1.EventListenerBinding{
+						Bindings: []*triggersv1beta1.EventListenerBinding{
 							{
 								Name:  "binding",
 								Value: &bindingval,
 							},
 						},
-						Template: &v1alpha1.EventListenerTemplate{
+						Template: &triggersv1beta1.EventListenerTemplate{
 							Ref:        &tempRef,
-							APIVersion: "v1alpha1",
+							APIVersion: "v1beta1",
 						},
 						Name: "tt1",
 					},
@@ -308,31 +332,31 @@ func TestEventListenerDescribe_TriggerWithTriggerTemplateRefTriggerRef(t *testin
 	bindingval := "somevalue"
 	tempRef := "someref"
 
-	els := []*v1alpha1.EventListener{
+	els := []*triggersv1beta1.EventListener{
 		{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "el1",
 				Namespace: "ns",
 			},
-			Spec: v1alpha1.EventListenerSpec{
-				Triggers: []v1alpha1.EventListenerTrigger{
+			Spec: triggersv1beta1.EventListenerSpec{
+				Triggers: []triggersv1beta1.EventListenerTrigger{
 					{
-						Bindings: []*v1alpha1.EventListenerBinding{
+						Bindings: []*triggersv1beta1.EventListenerBinding{
 							{
 								Name:  "binding",
 								Value: &bindingval,
 							},
 						},
-						Template: &v1alpha1.EventListenerTemplate{
+						Template: &triggersv1beta1.EventListenerTemplate{
 							Ref:        &tempRef,
-							APIVersion: "v1alpha1",
+							APIVersion: "v1beta1",
 						},
 						Name:               "tt1",
 						TriggerRef:         "triggeref",
 						ServiceAccountName: "test-sa",
-						Interceptors: []*v1alpha1.EventInterceptor{
+						Interceptors: []*triggersv1beta1.EventInterceptor{
 							{
-								Webhook: &v1alpha1.WebhookInterceptor{
+								Webhook: &triggersv1beta1.WebhookInterceptor{
 									ObjectRef: &corev1.ObjectReference{
 										Kind:       "Service",
 										Name:       "testwebhook",
@@ -354,18 +378,18 @@ func TestEventListenerDescribe_TriggerWithTriggerTemplateRefTriggerRef(t *testin
 func TestEventListenerDescribe_OneTriggerWithEmptyTriggerBinding(t *testing.T) {
 	triggerTemplateRef := "tt1"
 
-	els := []*v1alpha1.EventListener{
+	els := []*triggersv1beta1.EventListener{
 		{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "el1",
 				Namespace: "ns",
 			},
-			Spec: v1alpha1.EventListenerSpec{
-				Triggers: []v1alpha1.EventListenerTrigger{
+			Spec: triggersv1beta1.EventListenerSpec{
+				Triggers: []triggersv1beta1.EventListenerTrigger{
 					{
-						Template: &v1alpha1.TriggerSpecTemplate{
+						Template: &triggersv1beta1.TriggerSpecTemplate{
 							Ref:        &triggerTemplateRef,
-							APIVersion: "v1alpha1",
+							APIVersion: "v1beta1",
 						},
 					},
 				},
@@ -380,20 +404,20 @@ func TestEventListenerDescribe_MultipleTriggers(t *testing.T) {
 	triggerTemplateRef1 := "tt1"
 	triggerTemplateRef2 := "tt2"
 
-	els := []*v1alpha1.EventListener{
+	els := []*triggersv1beta1.EventListener{
 		{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "el1",
 				Namespace: "ns",
 			},
-			Spec: v1alpha1.EventListenerSpec{
-				Triggers: []v1alpha1.EventListenerTrigger{
+			Spec: triggersv1beta1.EventListenerSpec{
+				Triggers: []triggersv1beta1.EventListenerTrigger{
 					{
-						Template: &v1alpha1.TriggerSpecTemplate{
+						Template: &triggersv1beta1.TriggerSpecTemplate{
 							Ref:        &triggerTemplateRef1,
-							APIVersion: "v1alpha1",
+							APIVersion: "v1beta1",
 						},
-						Bindings: []*v1alpha1.EventListenerBinding{
+						Bindings: []*triggersv1beta1.EventListenerBinding{
 							{
 								Ref:        "tb1",
 								Kind:       "TriggerBinding",
@@ -402,22 +426,22 @@ func TestEventListenerDescribe_MultipleTriggers(t *testing.T) {
 							{
 								Ref:        "tb2",
 								Kind:       "ClusterTriggerBinding",
-								APIVersion: "v1alpha1",
+								APIVersion: "v1beta1",
 							},
 							{
 								Ref:        "tb3",
 								Kind:       "TriggerBinding",
-								APIVersion: "v1alpha1",
+								APIVersion: "v1beta1",
 							},
 						},
 					},
 					{
-						Template: &v1alpha1.TriggerSpecTemplate{
+						Template: &triggersv1beta1.TriggerSpecTemplate{
 							Ref:        &triggerTemplateRef2,
-							APIVersion: "v1alpha1",
+							APIVersion: "v1beta1",
 						},
 						ServiceAccountName: "sa1",
-						Bindings: []*v1alpha1.EventListenerBinding{
+						Bindings: []*triggersv1beta1.EventListenerBinding{
 							{
 								Ref:        "tb1",
 								Kind:       "TriggerBinding",
@@ -426,12 +450,12 @@ func TestEventListenerDescribe_MultipleTriggers(t *testing.T) {
 							{
 								Ref:        "tb2",
 								Kind:       "ClusterTriggerBinding",
-								APIVersion: "v1alpha1",
+								APIVersion: "v1beta1",
 							},
 							{
 								Ref:        "tb3",
 								Kind:       "TriggerBinding",
-								APIVersion: "v1alpha1",
+								APIVersion: "v1beta1",
 							},
 						},
 					},
@@ -445,37 +469,35 @@ func TestEventListenerDescribe_MultipleTriggers(t *testing.T) {
 
 func TestEventListenerDescribe_WithWebhookInterceptors(t *testing.T) {
 	triggerTemplateRef := "tt1"
-	els := []*v1alpha1.EventListener{
+	els := []*triggersv1beta1.EventListener{
 		{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "el1",
 				Namespace: "ns",
 			},
-			Status: v1alpha1.EventListenerStatus{
-				AddressStatus: duckv1alpha1.AddressStatus{
-					Address: &duckv1alpha1.Addressable{
-						Addressable: beta1.Addressable{
-							URL: &apis.URL{
-								Scheme: "http",
-								Host:   "el-listener.default.svc.cluster.local",
-							},
+			Status: triggersv1beta1.EventListenerStatus{
+				AddressStatus: duckv1beta1.AddressStatus{
+					Address: &duckv1beta1.Addressable{
+						URL: &apis.URL{
+							Scheme: "http",
+							Host:   "el-listener.default.svc.cluster.local",
 						},
 					},
 				},
-				Configuration: v1alpha1.EventListenerConfig{
+				Configuration: triggersv1beta1.EventListenerConfig{
 					GeneratedResourceName: "el-listener",
 				},
 			},
-			Spec: v1alpha1.EventListenerSpec{
-				Triggers: []v1alpha1.EventListenerTrigger{
+			Spec: triggersv1beta1.EventListenerSpec{
+				Triggers: []triggersv1beta1.EventListenerTrigger{
 
 					{
-						Template: &v1alpha1.TriggerSpecTemplate{
+						Template: &triggersv1beta1.TriggerSpecTemplate{
 							Ref:        &triggerTemplateRef,
-							APIVersion: "v1alpha1",
+							APIVersion: "v1beta1",
 						},
 						Name: "foo-trig",
-						Bindings: []*v1alpha1.EventListenerBinding{
+						Bindings: []*triggersv1beta1.EventListenerBinding{
 							{
 								Ref:        "tb1",
 								Kind:       "TriggerBinding",
@@ -484,17 +506,17 @@ func TestEventListenerDescribe_WithWebhookInterceptors(t *testing.T) {
 							{
 								Ref:        "tb2",
 								Kind:       "ClusterTriggerBinding",
-								APIVersion: "v1alpha1",
+								APIVersion: "v1beta1",
 							},
 							{
 								Ref:        "tb3",
 								Kind:       "TriggerBinding",
-								APIVersion: "v1alpha1",
+								APIVersion: "v1beta1",
 							},
 						},
-						Interceptors: []*v1alpha1.TriggerInterceptor{
+						Interceptors: []*triggersv1beta1.TriggerInterceptor{
 							{
-								Webhook: &v1alpha1.WebhookInterceptor{
+								Webhook: &triggersv1beta1.WebhookInterceptor{
 									ObjectRef: &corev1.ObjectReference{
 										Kind:       "Service",
 										Name:       "webhookTest",
@@ -515,22 +537,22 @@ func TestEventListenerDescribe_WithWebhookInterceptors(t *testing.T) {
 
 func TestEventListenerDescribe_WithWebhookInterceptorsWithParams(t *testing.T) {
 	triggerTemplateRef := "tt1"
-	els := []*v1alpha1.EventListener{
+	els := []*triggersv1beta1.EventListener{
 		{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "el1",
 				Namespace: "ns",
 			},
-			Spec: v1alpha1.EventListenerSpec{
-				Triggers: []v1alpha1.EventListenerTrigger{
+			Spec: triggersv1beta1.EventListenerSpec{
+				Triggers: []triggersv1beta1.EventListenerTrigger{
 
 					{
-						Template: &v1alpha1.TriggerSpecTemplate{
+						Template: &triggersv1beta1.TriggerSpecTemplate{
 							Ref:        &triggerTemplateRef,
-							APIVersion: "v1alpha1",
+							APIVersion: "v1beta1",
 						},
 						Name: "foo-trig",
-						Bindings: []*v1alpha1.EventListenerBinding{
+						Bindings: []*triggersv1beta1.EventListenerBinding{
 							{
 								Ref:        "tb1",
 								Kind:       "TriggerBinding",
@@ -539,17 +561,17 @@ func TestEventListenerDescribe_WithWebhookInterceptorsWithParams(t *testing.T) {
 							{
 								Ref:        "tb2",
 								Kind:       "ClusterTriggerBinding",
-								APIVersion: "v1alpha1",
+								APIVersion: "v1beta1",
 							},
 							{
 								Ref:        "tb3",
 								Kind:       "TriggerBinding",
-								APIVersion: "v1alpha1",
+								APIVersion: "v1beta1",
 							},
 						},
-						Interceptors: []*v1alpha1.TriggerInterceptor{
+						Interceptors: []*triggersv1beta1.TriggerInterceptor{
 							{
-								Webhook: &v1alpha1.WebhookInterceptor{
+								Webhook: &triggersv1beta1.WebhookInterceptor{
 									ObjectRef: &corev1.ObjectReference{
 										Kind:       "Service",
 										Name:       "foo",
@@ -579,25 +601,25 @@ func TestEventListenerDescribe_WithWebhookInterceptorsWithParams(t *testing.T) {
 
 func TestEventListenerDescribe_MultipleTriggerWithTriggerRefAndTriggerSpec(t *testing.T) {
 	triggerTemplateRef := "tt1"
-	els := []*v1alpha1.EventListener{
+	els := []*triggersv1beta1.EventListener{
 		{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "el1",
 				Namespace: "ns",
 			},
-			Spec: v1alpha1.EventListenerSpec{
-				Triggers: []v1alpha1.EventListenerTrigger{
+			Spec: triggersv1beta1.EventListenerSpec{
+				Triggers: []triggersv1beta1.EventListenerTrigger{
 					{
 						TriggerRef: "test-ref",
 					},
 					{
-						Template: &v1alpha1.TriggerSpecTemplate{
+						Template: &triggersv1beta1.TriggerSpecTemplate{
 							Ref:        &triggerTemplateRef,
-							APIVersion: "v1alpha1",
+							APIVersion: "v1beta1",
 						},
 						Name: "foo-trig",
 
-						Bindings: []*v1alpha1.EventListenerBinding{
+						Bindings: []*triggersv1beta1.EventListenerBinding{
 							{
 								Ref:        "tb1",
 								Kind:       "TriggerBinding",
@@ -606,17 +628,17 @@ func TestEventListenerDescribe_MultipleTriggerWithTriggerRefAndTriggerSpec(t *te
 							{
 								Ref:        "tb2",
 								Kind:       "ClusterTriggerBinding",
-								APIVersion: "v1alpha1",
+								APIVersion: "v1beta1",
 							},
 							{
 								Ref:        "tb3",
 								Kind:       "TriggerBinding",
-								APIVersion: "v1alpha1",
+								APIVersion: "v1beta1",
 							},
 						},
-						Interceptors: []*v1alpha1.TriggerInterceptor{
+						Interceptors: []*triggersv1beta1.TriggerInterceptor{
 							{
-								Webhook: &v1alpha1.WebhookInterceptor{
+								Webhook: &triggersv1beta1.WebhookInterceptor{
 									ObjectRef: &corev1.ObjectReference{
 										Kind:       "Service",
 										Name:       "foo",
@@ -646,22 +668,22 @@ func TestEventListenerDescribe_MultipleTriggerWithTriggerRefAndTriggerSpec(t *te
 
 func TestEventListenerDescribe_WithCELInterceptors(t *testing.T) {
 	triggerTemplateRef := "tt1"
-	els := []*v1alpha1.EventListener{
+	els := []*triggersv1beta1.EventListener{
 		{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "el1",
 				Namespace: "ns",
 			},
-			Spec: v1alpha1.EventListenerSpec{
-				Triggers: []v1alpha1.EventListenerTrigger{
+			Spec: triggersv1beta1.EventListenerSpec{
+				Triggers: []triggersv1beta1.EventListenerTrigger{
 
 					{
-						Template: &v1alpha1.TriggerSpecTemplate{
+						Template: &triggersv1beta1.TriggerSpecTemplate{
 							Ref:        &triggerTemplateRef,
-							APIVersion: "v1alpha1",
+							APIVersion: "v1beta1",
 						},
 						Name: "foo-trig",
-						Bindings: []*v1alpha1.EventListenerBinding{
+						Bindings: []*triggersv1beta1.EventListenerBinding{
 							{
 								Ref:        "tb1",
 								Kind:       "TriggerBinding",
@@ -670,23 +692,31 @@ func TestEventListenerDescribe_WithCELInterceptors(t *testing.T) {
 							{
 								Ref:        "tb2",
 								Kind:       "ClusterTriggerBinding",
-								APIVersion: "v1alpha1",
+								APIVersion: "v1beta1",
 							},
 							{
 								Ref:        "tb3",
 								Kind:       "TriggerBinding",
-								APIVersion: "v1alpha1",
+								APIVersion: "v1beta1",
 							},
 						},
-						Interceptors: []*v1alpha1.TriggerInterceptor{
+						Interceptors: []*triggersv1beta1.TriggerInterceptor{
 							{
-								DeprecatedCEL: &v1alpha1.CELInterceptor{
-									Filter: "body.value == 'test'",
-									Overlays: []v1alpha1.CELOverlay{
-										{
+								Ref: triggersv1beta1.InterceptorRef{
+									Name: "cel",
+									Kind: triggersv1beta1.ClusterInterceptorKind,
+								},
+								Params: []triggersv1beta1.InterceptorParams{
+									{
+										Name:  "filter",
+										Value: triggertest.ToV1JSON(t, `body.value == 'test'`),
+									},
+									{
+										Name: "overlays",
+										Value: triggertest.ToV1JSON(t, []triggersv1beta1.CELOverlay{{
 											Key:        "value",
 											Expression: "'testing'",
-										},
+										}}),
 									},
 								},
 							},
@@ -703,27 +733,27 @@ func TestEventListenerDescribe_WithCELInterceptors(t *testing.T) {
 func TestEventListenerDescribe_WithMultipleBindingAndInterceptors(t *testing.T) {
 	triggerTemplateRef1 := "tt1"
 	triggerTemplateRef2 := "tt2"
-	els := []*v1alpha1.EventListener{
+	els := []*triggersv1beta1.EventListener{
 		{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "el1",
 				Namespace: "ns",
 			},
-			Spec: v1alpha1.EventListenerSpec{
-				Resources: v1alpha1.Resources{
-					KubernetesResource: &v1alpha1.KubernetesResource{
+			Spec: triggersv1beta1.EventListenerSpec{
+				Resources: triggersv1beta1.Resources{
+					KubernetesResource: &triggersv1beta1.KubernetesResource{
 						ServiceType: "ClusterIP",
 					},
 				},
-				Triggers: []v1alpha1.EventListenerTrigger{
+				Triggers: []triggersv1beta1.EventListenerTrigger{
 
 					{
-						Template: &v1alpha1.TriggerSpecTemplate{
+						Template: &triggersv1beta1.TriggerSpecTemplate{
 							Ref:        &triggerTemplateRef1,
-							APIVersion: "v1alpha1",
+							APIVersion: "v1beta1",
 						},
 						Name: "foo-trig",
-						Bindings: []*v1alpha1.EventListenerBinding{
+						Bindings: []*triggersv1beta1.EventListenerBinding{
 							{
 								Ref:        "tb1",
 								Kind:       "TriggerBinding",
@@ -732,36 +762,44 @@ func TestEventListenerDescribe_WithMultipleBindingAndInterceptors(t *testing.T) 
 							{
 								Ref:        "tb2",
 								Kind:       "ClusterTriggerBinding",
-								APIVersion: "v1alpha1",
+								APIVersion: "v1beta1",
 							},
 							{
 								Ref:        "",
 								Kind:       "TriggerBinding",
-								APIVersion: "v1alpha1",
+								APIVersion: "v1beta1",
 							},
 						},
-						Interceptors: []*v1alpha1.TriggerInterceptor{
+						Interceptors: []*triggersv1beta1.TriggerInterceptor{
 							{
-								DeprecatedCEL: &v1alpha1.CELInterceptor{
-									Filter: "body.value == 'test'",
-									Overlays: []v1alpha1.CELOverlay{
-										{
+								Ref: triggersv1beta1.InterceptorRef{
+									Name: "cel",
+									Kind: triggersv1beta1.ClusterInterceptorKind,
+								},
+								Params: []triggersv1beta1.InterceptorParams{
+									{
+										Name:  "filter",
+										Value: triggertest.ToV1JSON(t, `body.value == 'test'`),
+									},
+									{
+										Name: "overlays",
+										Value: triggertest.ToV1JSON(t, []triggersv1beta1.CELOverlay{{
 											Key:        "value",
 											Expression: "'testing'",
-										},
+										}}),
 									},
 								},
 							},
 						},
 					},
 					{
-						Template: &v1alpha1.TriggerSpecTemplate{
+						Template: &triggersv1beta1.TriggerSpecTemplate{
 							Ref:        &triggerTemplateRef2,
-							APIVersion: "v1alpha1",
+							APIVersion: "v1beta1",
 						},
 						ServiceAccountName: "sa1",
 						Name:               "foo-trig",
-						Bindings: []*v1alpha1.EventListenerBinding{
+						Bindings: []*triggersv1beta1.EventListenerBinding{
 							{
 								Ref:        "tb4",
 								Kind:       "TriggerBinding",
@@ -770,12 +808,12 @@ func TestEventListenerDescribe_WithMultipleBindingAndInterceptors(t *testing.T) 
 							{
 								Ref:        "tb5",
 								Kind:       "ClusterTriggerBinding",
-								APIVersion: "v1alpha1",
+								APIVersion: "v1beta1",
 							},
 						},
-						Interceptors: []*v1alpha1.TriggerInterceptor{
+						Interceptors: []*triggersv1beta1.TriggerInterceptor{
 							{
-								Webhook: &v1alpha1.WebhookInterceptor{
+								Webhook: &triggersv1beta1.WebhookInterceptor{
 									ObjectRef: &corev1.ObjectReference{
 										Kind:       "Service",
 										Name:       "webhookTest",
@@ -785,13 +823,21 @@ func TestEventListenerDescribe_WithMultipleBindingAndInterceptors(t *testing.T) 
 								},
 							},
 							{
-								DeprecatedCEL: &v1alpha1.CELInterceptor{
-									Filter: "body.value == 'test'",
-									Overlays: []v1alpha1.CELOverlay{
-										{
+								Ref: triggersv1beta1.InterceptorRef{
+									Name: "cel",
+									Kind: triggersv1beta1.ClusterInterceptorKind,
+								},
+								Params: []triggersv1beta1.InterceptorParams{
+									{
+										Name:  "filter",
+										Value: triggertest.ToV1JSON(t, `body.value == 'test'`),
+									},
+									{
+										Name: "overlays",
+										Value: triggertest.ToV1JSON(t, []triggersv1beta1.CELOverlay{{
 											Key:        "value",
 											Expression: "'testing'",
-										},
+										}}),
 									},
 								},
 							},
@@ -807,22 +853,22 @@ func TestEventListenerDescribe_WithMultipleBindingAndInterceptors(t *testing.T) 
 func TestEventListenerDescribe_OutputYAMLWithMultipleBindingAndInterceptors(t *testing.T) {
 	triggerTemplateRef1 := "tt1"
 	triggerTemplateRef2 := "tt2"
-	els := []*v1alpha1.EventListener{
+	els := []*triggersv1beta1.EventListener{
 		{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "el1",
 				Namespace: "ns",
 			},
-			Spec: v1alpha1.EventListenerSpec{
-				Triggers: []v1alpha1.EventListenerTrigger{
+			Spec: triggersv1beta1.EventListenerSpec{
+				Triggers: []triggersv1beta1.EventListenerTrigger{
 
 					{
-						Template: &v1alpha1.TriggerSpecTemplate{
+						Template: &triggersv1beta1.TriggerSpecTemplate{
 							Ref:        &triggerTemplateRef1,
-							APIVersion: "v1alpha1",
+							APIVersion: "v1beta1",
 						},
 						Name: "foo-trig",
-						Bindings: []*v1alpha1.EventListenerBinding{
+						Bindings: []*triggersv1beta1.EventListenerBinding{
 							{
 								Ref:        "tb1",
 								Kind:       "TriggerBinding",
@@ -831,36 +877,44 @@ func TestEventListenerDescribe_OutputYAMLWithMultipleBindingAndInterceptors(t *t
 							{
 								Ref:        "tb2",
 								Kind:       "ClusterTriggerBinding",
-								APIVersion: "v1alpha1",
+								APIVersion: "v1beta1",
 							},
 							{
 								Ref:        "tb3",
 								Kind:       "TriggerBinding",
-								APIVersion: "v1alpha1",
+								APIVersion: "v1beta1",
 							},
 						},
-						Interceptors: []*v1alpha1.TriggerInterceptor{
+						Interceptors: []*triggersv1beta1.TriggerInterceptor{
 							{
-								DeprecatedCEL: &v1alpha1.CELInterceptor{
-									Filter: "body.value == 'test'",
-									Overlays: []v1alpha1.CELOverlay{
-										{
+								Ref: triggersv1beta1.InterceptorRef{
+									Name: "cel",
+									Kind: triggersv1beta1.ClusterInterceptorKind,
+								},
+								Params: []triggersv1beta1.InterceptorParams{
+									{
+										Name:  "filter",
+										Value: triggertest.ToV1JSON(t, `body.value == 'test'`),
+									},
+									{
+										Name: "overlays",
+										Value: triggertest.ToV1JSON(t, []triggersv1beta1.CELOverlay{{
 											Key:        "value",
 											Expression: "'testing'",
-										},
+										}}),
 									},
 								},
 							},
 						},
 					},
 					{
-						Template: &v1alpha1.TriggerSpecTemplate{
+						Template: &triggersv1beta1.TriggerSpecTemplate{
 							Ref:        &triggerTemplateRef2,
-							APIVersion: "v1alpha1",
+							APIVersion: "v1beta1",
 						},
 						ServiceAccountName: "sa1",
 						Name:               "foo-trig",
-						Bindings: []*v1alpha1.EventListenerBinding{
+						Bindings: []*triggersv1beta1.EventListenerBinding{
 							{
 								Ref:        "tb4",
 								Kind:       "TriggerBinding",
@@ -869,12 +923,12 @@ func TestEventListenerDescribe_OutputYAMLWithMultipleBindingAndInterceptors(t *t
 							{
 								Ref:        "tb5",
 								Kind:       "ClusterTriggerBinding",
-								APIVersion: "v1alpha1",
+								APIVersion: "v1beta1",
 							},
 						},
-						Interceptors: []*v1alpha1.TriggerInterceptor{
+						Interceptors: []*triggersv1beta1.TriggerInterceptor{
 							{
-								Webhook: &v1alpha1.WebhookInterceptor{
+								Webhook: &triggersv1beta1.WebhookInterceptor{
 									ObjectRef: &corev1.ObjectReference{
 										Kind:       "Service",
 										Name:       "webhookTest",
@@ -884,13 +938,21 @@ func TestEventListenerDescribe_OutputYAMLWithMultipleBindingAndInterceptors(t *t
 								},
 							},
 							{
-								DeprecatedCEL: &v1alpha1.CELInterceptor{
-									Filter: "body.value == 'test'",
-									Overlays: []v1alpha1.CELOverlay{
-										{
+								Ref: triggersv1beta1.InterceptorRef{
+									Name: "cel",
+									Kind: triggersv1beta1.ClusterInterceptorKind,
+								},
+								Params: []triggersv1beta1.InterceptorParams{
+									{
+										Name:  "filter",
+										Value: triggertest.ToV1JSON(t, `body.value == 'test'`),
+									},
+									{
+										Name: "overlays",
+										Value: triggertest.ToV1JSON(t, []triggersv1beta1.CELOverlay{{
 											Key:        "value",
 											Expression: "'testing'",
-										},
+										}}),
 									},
 								},
 							},
@@ -906,10 +968,21 @@ func TestEventListenerDescribe_OutputYAMLWithMultipleBindingAndInterceptors(t *t
 			Name: "ns",
 		},
 	}}})
-	p := &test.Params{Triggers: cs.Triggers, Kube: cs.Kube}
+	cs.Triggers.Resources = cb.TriggersAPIResourceList("v1beta1", []string{"eventlistener"})
+	tdc := testDynamic.Options{}
+	var utts []runtime.Object
+	for _, el := range els {
+		utts = append(utts, cb.UnstructuredV1beta1EL(el, "v1beta1"))
+	}
+	dc, err := tdc.Client(utts...)
+	if err != nil {
+		t.Errorf("unable to create dynamic client: %v", err)
+	}
+
+	p := &test.Params{Tekton: cs.Pipeline, Kube: cs.Kube, Triggers: cs.Triggers, Dynamic: dc}
 
 	eventListener := Command(p)
-	out, err := test.ExecuteCommand(eventListener, "desc", "el1", "-n", "ns", "-o", "json")
+	out, err := test.ExecuteCommand(eventListener, "desc", "el1", "-n", "ns", "-o", "yaml")
 	if err != nil {
 		t.Errorf("Error expected here")
 	}
@@ -917,21 +990,19 @@ func TestEventListenerDescribe_OutputYAMLWithMultipleBindingAndInterceptors(t *t
 }
 
 func TestEventListenerDescribe_WithOutputStatusURL(t *testing.T) {
-	els := []*v1alpha1.EventListener{
+	els := []*triggersv1beta1.EventListener{
 		{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "el1",
 				Namespace: "ns",
 			},
 
-			Status: v1alpha1.EventListenerStatus{
-				AddressStatus: duckv1alpha1.AddressStatus{
-					Address: &duckv1alpha1.Addressable{
-						Addressable: beta1.Addressable{
-							URL: &apis.URL{
-								Scheme: "http",
-								Host:   "el-listener.default.svc.cluster.local",
-							},
+			Status: triggersv1beta1.EventListenerStatus{
+				AddressStatus: duckv1beta1.AddressStatus{
+					Address: &duckv1beta1.Addressable{
+						URL: &apis.URL{
+							Scheme: "http",
+							Host:   "el-listener.default.svc.cluster.local",
 						},
 					},
 				},
@@ -941,7 +1012,18 @@ func TestEventListenerDescribe_WithOutputStatusURL(t *testing.T) {
 
 	cs := test.SeedTestResources(t, triggertest.Resources{EventListeners: els})
 
-	p := &test.Params{Triggers: cs.Triggers, Kube: cs.Kube}
+	cs.Triggers.Resources = cb.TriggersAPIResourceList("v1beta1", []string{"eventlistener"})
+	tdc := testDynamic.Options{}
+	var utts []runtime.Object
+	for _, el := range els {
+		utts = append(utts, cb.UnstructuredV1beta1EL(el, "v1beta1"))
+	}
+	dc, err := tdc.Client(utts...)
+	if err != nil {
+		t.Errorf("unable to create dynamic client: %v", err)
+	}
+
+	p := &test.Params{Tekton: cs.Pipeline, Kube: cs.Kube, Triggers: cs.Triggers, Dynamic: dc}
 
 	eventListener := Command(p)
 	out, err := test.ExecuteCommand(eventListener, "desc", "el1", "-o", "url", "-n", "ns")
@@ -952,7 +1034,7 @@ func TestEventListenerDescribe_WithOutputStatusURL(t *testing.T) {
 }
 
 func TestEventListenerDescribe_OutputStatusURL_WithNoURL(t *testing.T) {
-	els := []*v1alpha1.EventListener{
+	els := []*triggersv1beta1.EventListener{
 		{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "el1",
@@ -963,7 +1045,18 @@ func TestEventListenerDescribe_OutputStatusURL_WithNoURL(t *testing.T) {
 
 	cs := test.SeedTestResources(t, triggertest.Resources{EventListeners: els})
 
-	p := &test.Params{Triggers: cs.Triggers, Kube: cs.Kube}
+	cs.Triggers.Resources = cb.TriggersAPIResourceList("v1beta1", []string{"eventlistener"})
+	tdc := testDynamic.Options{}
+	var utts []runtime.Object
+	for _, el := range els {
+		utts = append(utts, cb.UnstructuredV1beta1EL(el, "v1beta1"))
+	}
+	dc, err := tdc.Client(utts...)
+	if err != nil {
+		t.Errorf("unable to create dynamic client: %v", err)
+	}
+
+	p := &test.Params{Tekton: cs.Pipeline, Kube: cs.Kube, Triggers: cs.Triggers, Dynamic: dc}
 
 	eventListener := Command(p)
 	out, err := test.ExecuteCommand(eventListener, "desc", "el1", "-o", "url", "-n", "ns")
@@ -976,18 +1069,18 @@ func TestEventListenerDescribe_OutputStatusURL_WithNoURL(t *testing.T) {
 
 func TestEventListenerDescribe_AutoSelect(t *testing.T) {
 	triggerTemplateRef := "tt1"
-	els := []*v1alpha1.EventListener{
+	els := []*triggersv1beta1.EventListener{
 		{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "el1",
 				Namespace: "ns",
 			},
-			Spec: v1alpha1.EventListenerSpec{
-				Triggers: []v1alpha1.EventListenerTrigger{
+			Spec: triggersv1beta1.EventListenerSpec{
+				Triggers: []triggersv1beta1.EventListenerTrigger{
 					{
-						Template: &v1alpha1.TriggerSpecTemplate{
+						Template: &triggersv1beta1.TriggerSpecTemplate{
 							Ref:        &triggerTemplateRef,
-							APIVersion: "v1alpha1",
+							APIVersion: "v1beta1",
 						},
 					},
 				},
@@ -995,28 +1088,28 @@ func TestEventListenerDescribe_AutoSelect(t *testing.T) {
 		},
 	}
 
-	cs := test.SeedTestResources(t, triggertest.Resources{EventListeners: els, Namespaces: []*corev1.Namespace{{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "ns",
-		},
-	}}})
-	p := &test.Params{Triggers: cs.Triggers, Kube: cs.Kube}
-
-	eventListener := Command(p)
-	out, err := test.ExecuteCommand(eventListener, "desc", "-n", "ns")
-	if err != nil {
-		t.Errorf("Error expected here")
-	}
-	golden.Assert(t, out, fmt.Sprintf("%s.golden", t.Name()))
+	executeEventListenerCommand(t, els)
 }
 
-func executeEventListenerCommand(t *testing.T, els []*v1alpha1.EventListener) {
+func executeEventListenerCommand(t *testing.T, els []*triggersv1beta1.EventListener) {
 	cs := test.SeedTestResources(t, triggertest.Resources{EventListeners: els, Namespaces: []*corev1.Namespace{{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "ns",
 		},
 	}}})
-	p := &test.Params{Triggers: cs.Triggers, Kube: cs.Kube}
+
+	cs.Triggers.Resources = cb.TriggersAPIResourceList("v1beta1", []string{"eventlistener"})
+	tdc := testDynamic.Options{}
+	var utts []runtime.Object
+	for _, el := range els {
+		utts = append(utts, cb.UnstructuredV1beta1EL(el, "v1beta1"))
+	}
+	dc, err := tdc.Client(utts...)
+	if err != nil {
+		t.Errorf("unable to create dynamic client: %v", err)
+	}
+
+	p := &test.Params{Tekton: cs.Pipeline, Kube: cs.Kube, Triggers: cs.Triggers, Dynamic: dc}
 
 	eventListener := Command(p)
 	out, err := test.ExecuteCommand(eventListener, "desc", "el1", "-n", "ns")

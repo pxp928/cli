@@ -24,8 +24,9 @@ import (
 	"github.com/tektoncd/cli/pkg/eventlistener"
 	"github.com/tektoncd/cli/pkg/formatted"
 	"github.com/tektoncd/cli/pkg/printer"
-	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+	"github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	cliopts "k8s.io/cli-runtime/pkg/genericclioptions"
 )
 
@@ -70,7 +71,7 @@ or
 				namespace = ""
 			}
 
-			els, err := eventlistener.List(cs.Triggers, namespace)
+			els, err := eventlistener.List(cs, metav1.ListOptions{}, namespace)
 			if err != nil {
 				if opts.AllNamespaces {
 					return fmt.Errorf("failed to list EventListeners from all namespaces: %v", err)
@@ -105,7 +106,7 @@ or
 	return c
 }
 
-func printFormatted(s *cli.Stream, els *v1alpha1.EventListenerList, p cli.Params, allNamespaces bool, noHeaders bool) error {
+func printFormatted(s *cli.Stream, els *v1beta1.EventListenerList, p cli.Params, allNamespaces bool, noHeaders bool) error {
 	if len(els.Items) == 0 {
 		fmt.Fprintln(s.Err, emptyMsg)
 		return nil

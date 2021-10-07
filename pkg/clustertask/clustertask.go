@@ -24,6 +24,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
@@ -49,7 +50,7 @@ func GetAllClusterTaskNames(p cli.Params) ([]string, error) {
 }
 
 func List(c *cli.Clients, opts metav1.ListOptions) (*v1beta1.ClusterTaskList, error) {
-	unstructuredCT, err := actions.List(clustertaskGroupResource, c, "", opts)
+	unstructuredCT, err := actions.List(clustertaskGroupResource, c.Dynamic, c.Tekton.Discovery(), "", opts)
 	if err != nil {
 		return nil, err
 	}
@@ -90,7 +91,7 @@ func Get(c *cli.Clients, clustertaskname string, opts metav1.GetOptions) (*v1bet
 
 // It will fetch the resource in v1beta1 struct format
 func GetV1beta1(c *cli.Clients, clustertaskname string, opts metav1.GetOptions) (*v1beta1.ClusterTask, error) {
-	unstructuredCT, err := actions.Get(clustertaskGroupResource, c, clustertaskname, "", opts)
+	unstructuredCT, err := actions.Get(clustertaskGroupResource, c.Dynamic, c.Tekton.Discovery(), clustertaskname, "", opts)
 	if err != nil {
 		return nil, err
 	}
@@ -105,7 +106,7 @@ func GetV1beta1(c *cli.Clients, clustertaskname string, opts metav1.GetOptions) 
 
 // It will fetch the resource in v1alpha1 struct format
 func getV1alpha1(c *cli.Clients, clustertaskname string, opts metav1.GetOptions) (*v1alpha1.ClusterTask, error) {
-	unstructuredCT, err := actions.Get(clustertaskGroupResource, c, clustertaskname, "", opts)
+	unstructuredCT, err := actions.Get(clustertaskGroupResource, c.Dynamic, c.Tekton.Discovery(), clustertaskname, "", opts)
 	if err != nil {
 		return nil, err
 	}
@@ -116,4 +117,32 @@ func getV1alpha1(c *cli.Clients, clustertaskname string, opts metav1.GetOptions)
 		return nil, err
 	}
 	return clustertask, nil
+}
+
+func Create(c *cli.Clients, ct *v1beta1.ClusterTask, opts metav1.CreateOptions) (*v1beta1.ClusterTask, error) {
+	_, err := actions.GetGroupVersionResource(clustertaskGroupResource, c.Tekton.Discovery())
+	if err != nil {
+		return nil, err
+	}
+
+	return createUnstructured(ct, c, opts)
+}
+
+func createUnstructured(obj runtime.Object, c *cli.Clients, opts metav1.CreateOptions) (*v1beta1.ClusterTask, error) {
+	object, err := runtime.DefaultUnstructuredConverter.ToUnstructured(obj)
+	if err != nil {
+		return nil, err
+	}
+	unstructuredCT := &unstructured.Unstructured{
+		Object: object,
+	}
+	newUnstructuredCT, err := actions.Create(clustertaskGroupResource, c, unstructuredCT, "", opts)
+	if err != nil {
+		return nil, err
+	}
+	var clusterTask *v1beta1.ClusterTask
+	if err := runtime.DefaultUnstructuredConverter.FromUnstructured(newUnstructuredCT.UnstructuredContent(), &clusterTask); err != nil {
+		return nil, err
+	}
+	return clusterTask, nil
 }

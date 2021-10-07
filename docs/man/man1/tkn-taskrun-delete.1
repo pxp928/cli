@@ -40,6 +40,10 @@ Delete TaskRuns in a namespace
     help for delete
 
 .PP
+\fB\-i\fP, \fB\-\-ignore\-running\fP[=true]
+    ignore running TaskRun (default: true)
+
+.PP
 \fB\-\-keep\fP=0
     Keep n most recent number of TaskRuns
 
@@ -50,6 +54,10 @@ Delete TaskRuns in a namespace
 .PP
 \fB\-o\fP, \fB\-\-output\fP=""
     Output format. One of: json|yaml|name|go\-template|go\-template\-file|template|templatefile|jsonpath|jsonpath\-as\-json|jsonpath\-file.
+
+.PP
+\fB\-\-show\-managed\-fields\fP[=false]
+    If true, keep the managedFields when printing objects in JSON or YAML format.
 
 .PP
 \fB\-t\fP, \fB\-\-task\fP=""

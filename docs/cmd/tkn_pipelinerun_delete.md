@@ -32,11 +32,13 @@ or
       --allow-missing-template-keys   If true, ignore any errors in templates when a field or map key is missing in the template. Only applies to golang and jsonpath output formats. (default true)
   -f, --force                         Whether to force deletion (default: false)
   -h, --help                          help for delete
+  -i, --ignore-running                ignore running PipelineRun (default: true) (default true)
       --keep int                      Keep n most recent number of PipelineRuns
       --keep-since int                When deleting all PipelineRuns keep the ones that has been completed since n minutes
       --label string                  A selector (label query) to filter on when running with --all, supports '=', '==', and '!='
   -o, --output string                 Output format. One of: json|yaml|name|go-template|go-template-file|template|templatefile|jsonpath|jsonpath-as-json|jsonpath-file.
   -p, --pipeline string               The name of a Pipeline whose PipelineRuns should be deleted (does not delete the Pipeline)
+      --show-managed-fields           If true, keep the managedFields when printing objects in JSON or YAML format.
       --template string               Template string or path to template file to use when -o=go-template, -o=go-template-file. The template format is golang templates [http://golang.org/pkg/text/template/#pkg-overview].
 ```
 

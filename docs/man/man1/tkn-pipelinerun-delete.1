@@ -36,6 +36,10 @@ Delete PipelineRuns in a namespace
     help for delete
 
 .PP
+\fB\-i\fP, \fB\-\-ignore\-running\fP[=true]
+    ignore running PipelineRun (default: true)
+
+.PP
 \fB\-\-keep\fP=0
     Keep n most recent number of PipelineRuns
 
@@ -54,6 +58,10 @@ Delete PipelineRuns in a namespace
 .PP
 \fB\-p\fP, \fB\-\-pipeline\fP=""
     The name of a Pipeline whose PipelineRuns should be deleted (does not delete the Pipeline)
+
+.PP
+\fB\-\-show\-managed\-fields\fP[=false]
+    If true, keep the managedFields when printing objects in JSON or YAML format.
 
 .PP
 \fB\-\-template\fP=""

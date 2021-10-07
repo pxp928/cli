@@ -20,7 +20,9 @@ import (
 
 	"github.com/jonboulle/clockwork"
 	"github.com/tektoncd/cli/pkg/test"
-	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+	cb "github.com/tektoncd/cli/pkg/test/builder"
+	testDynamic "github.com/tektoncd/cli/pkg/test/dynamic"
+	"github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	triggertest "github.com/tektoncd/triggers/test"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -29,7 +31,7 @@ import (
 func TestTriggerTemplate_GetAllTriggerTemplate(t *testing.T) {
 	clock := clockwork.NewFakeClock()
 
-	tt := []*v1alpha1.TriggerTemplate{
+	tt := []*v1beta1.TriggerTemplate{
 		{
 			ObjectMeta: v1.ObjectMeta{
 				Name:              "tt1",
@@ -39,7 +41,7 @@ func TestTriggerTemplate_GetAllTriggerTemplate(t *testing.T) {
 		},
 	}
 
-	tt2 := []*v1alpha1.TriggerTemplate{
+	tt2 := []*v1beta1.TriggerTemplate{
 		{
 			ObjectMeta: v1.ObjectMeta{
 				Name:              "tt1",
@@ -68,9 +70,28 @@ func TestTriggerTemplate_GetAllTriggerTemplate(t *testing.T) {
 		},
 	}}})
 
-	p := &test.Params{Triggers: cs.Triggers, Kube: cs.Kube}
-	p2 := &test.Params{Triggers: cs2.Triggers, Kube: cs2.Kube}
-	p3 := &test.Params{Triggers: cs2.Triggers, Kube: cs2.Kube}
+	cs.Triggers.Resources = cb.TriggersAPIResourceList("v1beta1", []string{"triggertemplate"})
+	tdc := testDynamic.Options{}
+	dc, err := tdc.Client(
+		cb.UnstructuredV1beta1TT(tt[0], "v1beta1"),
+	)
+	if err != nil {
+		t.Errorf("unable to create dynamic client: %v", err)
+	}
+
+	cs2.Triggers.Resources = cb.TriggersAPIResourceList("v1beta1", []string{"triggertemplate"})
+	tdc2 := testDynamic.Options{}
+	dc2, err := tdc2.Client(
+		cb.UnstructuredV1beta1TT(tt2[0], "v1beta1"),
+		cb.UnstructuredV1beta1TT(tt2[1], "v1beta1"),
+	)
+	if err != nil {
+		t.Errorf("unable to create dynamic client: %v", err)
+	}
+
+	p := &test.Params{Triggers: cs.Triggers, Kube: cs.Kube, Clock: clock, Dynamic: dc}
+	p2 := &test.Params{Triggers: cs2.Triggers, Kube: cs2.Kube, Clock: clock, Dynamic: dc2}
+	p3 := &test.Params{Triggers: cs2.Triggers, Kube: cs2.Kube, Clock: clock, Dynamic: dc2}
 	p3.SetNamespace("unknown")
 
 	testParams := []struct {
@@ -97,7 +118,11 @@ func TestTriggerTemplate_GetAllTriggerTemplate(t *testing.T) {
 
 	for _, tp := range testParams {
 		t.Run(tp.name, func(t *testing.T) {
-			got, err := GetAllTriggerTemplateNames(tp.params.Triggers, tp.params.Namespace())
+			cs, err := tp.params.Clients()
+			if err != nil {
+				t.Errorf("unexpected Error, not able to get clients")
+			}
+			got, err := GetAllTriggerTemplateNames(cs, tp.params.Namespace())
 			if err != nil {
 				t.Errorf("unexpected Error")
 			}
@@ -109,7 +134,7 @@ func TestTriggerTemplate_GetAllTriggerTemplate(t *testing.T) {
 func TestTriggerTemplate_List(t *testing.T) {
 	clock := clockwork.NewFakeClock()
 
-	tt := []*v1alpha1.TriggerTemplate{
+	tt := []*v1beta1.TriggerTemplate{
 		{
 			ObjectMeta: v1.ObjectMeta{
 				Name:              "tt1",
@@ -119,7 +144,7 @@ func TestTriggerTemplate_List(t *testing.T) {
 		},
 	}
 
-	tt2 := []*v1alpha1.TriggerTemplate{
+	tt2 := []*v1beta1.TriggerTemplate{
 		{
 			ObjectMeta: v1.ObjectMeta{
 				Name:              "tt1",
@@ -148,9 +173,28 @@ func TestTriggerTemplate_List(t *testing.T) {
 		},
 	}}})
 
-	p := &test.Params{Triggers: cs.Triggers, Kube: cs.Kube}
-	p2 := &test.Params{Triggers: cs2.Triggers, Kube: cs2.Kube}
-	p3 := &test.Params{Triggers: cs2.Triggers, Kube: cs2.Kube}
+	cs.Triggers.Resources = cb.TriggersAPIResourceList("v1beta1", []string{"triggertemplate"})
+	tdc := testDynamic.Options{}
+	dc, err := tdc.Client(
+		cb.UnstructuredV1beta1TT(tt[0], "v1beta1"),
+	)
+	if err != nil {
+		t.Errorf("unable to create dynamic client: %v", err)
+	}
+
+	cs2.Triggers.Resources = cb.TriggersAPIResourceList("v1beta1", []string{"triggertemplate"})
+	tdc2 := testDynamic.Options{}
+	dc2, err := tdc2.Client(
+		cb.UnstructuredV1beta1TT(tt2[0], "v1beta1"),
+		cb.UnstructuredV1beta1TT(tt2[1], "v1beta1"),
+	)
+	if err != nil {
+		t.Errorf("unable to create dynamic client: %v", err)
+	}
+
+	p := &test.Params{Triggers: cs.Triggers, Kube: cs.Kube, Clock: clock, Dynamic: dc}
+	p2 := &test.Params{Triggers: cs2.Triggers, Kube: cs2.Kube, Clock: clock, Dynamic: dc2}
+	p3 := &test.Params{Triggers: cs2.Triggers, Kube: cs2.Kube, Clock: clock, Dynamic: dc2}
 	p3.SetNamespace("unknown")
 
 	testParams := []struct {
@@ -172,7 +216,11 @@ func TestTriggerTemplate_List(t *testing.T) {
 
 	for _, tp := range testParams {
 		t.Run(tp.name, func(t *testing.T) {
-			got, err := List(tp.params.Triggers, "ns")
+			cs, err := tp.params.Clients()
+			if err != nil {
+				t.Errorf("unexpected Error, not able to get clients")
+			}
+			got, err := List(cs, v1.ListOptions{}, "ns")
 			if err != nil {
 				t.Errorf("unexpected Error")
 			}
@@ -184,4 +232,52 @@ func TestTriggerTemplate_List(t *testing.T) {
 			test.AssertOutput(t, tp.want, ttnames)
 		})
 	}
+}
+
+func TestTriggerTemplate_Get(t *testing.T) {
+	clock := clockwork.NewFakeClock()
+
+	tt := []*v1beta1.TriggerTemplate{
+		{
+			ObjectMeta: v1.ObjectMeta{
+				Name:              "tt1",
+				Namespace:         "ns",
+				CreationTimestamp: v1.Time{Time: clock.Now().Add(-5 * time.Minute)},
+			},
+		},
+		{
+			ObjectMeta: v1.ObjectMeta{
+				Name:              "tt2",
+				Namespace:         "ns",
+				CreationTimestamp: v1.Time{Time: clock.Now().Add(-5 * time.Minute)},
+			},
+		},
+	}
+
+	cs := test.SeedTestResources(t, triggertest.Resources{TriggerTemplates: tt, Namespaces: []*corev1.Namespace{{
+		ObjectMeta: v1.ObjectMeta{
+			Name: "ns",
+		},
+	}}})
+
+	cs.Triggers.Resources = cb.TriggersAPIResourceList("v1beta1", []string{"triggertemplate"})
+	tdc := testDynamic.Options{}
+	dc, err := tdc.Client(
+		cb.UnstructuredV1beta1TT(tt[0], "v1beta1"),
+		cb.UnstructuredV1beta1TT(tt[1], "v1beta1"),
+	)
+	if err != nil {
+		t.Errorf("unable to create dynamic client: %v", err)
+	}
+
+	p := &test.Params{Triggers: cs.Triggers, Kube: cs.Kube, Clock: clock, Dynamic: dc}
+	c, err := p.Clients()
+	if err != nil {
+		t.Errorf("unable to create client: %v", err)
+	}
+	got, err := Get(c, "tt2", v1.GetOptions{}, "ns")
+	if err != nil {
+		t.Errorf("unexpected Error")
+	}
+	test.AssertOutput(t, "tt2", got.Name)
 }

@@ -131,7 +131,7 @@ func TestPipelineRunDelete(t *testing.T) {
 	}
 
 	seeds := make([]clients, 0)
-	for i := 0; i < 8; i++ {
+	for i := 0; i < 9; i++ {
 		cs, _ := test.SeedTestData(t, pipelinetest.Data{
 			Pipelines:    pdata,
 			PipelineRuns: prdata,
@@ -239,7 +239,7 @@ func TestPipelineRunDelete(t *testing.T) {
 			input:       seeds[0].pipelineClient,
 			inputStream: strings.NewReader("y"),
 			wantError:   false,
-			want:        "Are you sure you want to delete all PipelineRuns related to Pipeline \"pipeline\" (y/n): All PipelineRuns associated with Pipeline \"pipeline\" deleted in namespace \"ns\"\n",
+			want:        "Are you sure you want to delete all PipelineRuns related to Pipeline \"pipeline\" (y/n): All PipelineRuns(Completed) associated with Pipeline \"pipeline\" deleted in namespace \"ns\"\n",
 		},
 		{
 			name:        "Delete all with prompt",
@@ -248,7 +248,7 @@ func TestPipelineRunDelete(t *testing.T) {
 			input:       seeds[3].pipelineClient,
 			inputStream: strings.NewReader("y"),
 			wantError:   false,
-			want:        "Are you sure you want to delete all PipelineRuns in namespace \"ns\" (y/n): All PipelineRuns deleted in namespace \"ns\"\n",
+			want:        "Are you sure you want to delete all PipelineRuns in namespace \"ns\" (y/n): All PipelineRuns(Completed) deleted in namespace \"ns\"\n",
 		},
 		{
 			name:        "Delete all with -f",
@@ -257,7 +257,7 @@ func TestPipelineRunDelete(t *testing.T) {
 			input:       seeds[4].pipelineClient,
 			inputStream: nil,
 			wantError:   false,
-			want:        "All PipelineRuns deleted in namespace \"ns\"\n",
+			want:        "All PipelineRuns(Completed) deleted in namespace \"ns\"\n",
 		},
 		{
 			name:        "Delete all keeping 2",
@@ -266,7 +266,7 @@ func TestPipelineRunDelete(t *testing.T) {
 			input:       seeds[4].pipelineClient,
 			inputStream: nil,
 			wantError:   false,
-			want:        "All but 2 PipelineRuns deleted in namespace \"ns\"\n",
+			want:        "All but 2 PipelineRuns(Completed) deleted in namespace \"ns\"\n",
 		},
 		{
 			name:        "Keep -1 is a no go",
@@ -284,7 +284,7 @@ func TestPipelineRunDelete(t *testing.T) {
 			input:       seeds[4].pipelineClient,
 			inputStream: nil,
 			wantError:   false,
-			want:        "All but 1 PipelineRuns deleted in namespace \"ns\"\n",
+			want:        "All but 1 PipelineRuns(Completed) deleted in namespace \"ns\"\n",
 		},
 		{
 			name:        "Error from using pipelinerun name with --all",
@@ -311,7 +311,7 @@ func TestPipelineRunDelete(t *testing.T) {
 			input:       seeds[5].pipelineClient,
 			inputStream: nil,
 			wantError:   false,
-			want:        "Are you sure you want to delete all PipelineRuns related to Pipeline \"pipeline\" keeping 2 PipelineRuns (y/n): All but 2 PipelineRuns associated with Pipeline \"pipeline\" deleted in namespace \"ns\"\n",
+			want:        "Are you sure you want to delete all PipelineRuns related to Pipeline \"pipeline\" keeping 2 PipelineRuns (y/n): All but 2 PipelineRuns(Completed) associated with Pipeline \"pipeline\" deleted in namespace \"ns\"\n",
 		},
 		{
 			name:        "Error from using argument with --keep",
@@ -329,16 +329,7 @@ func TestPipelineRunDelete(t *testing.T) {
 			input:       seeds[7].pipelineClient,
 			inputStream: nil,
 			wantError:   false,
-			want:        "3 expired PipelineRuns has been deleted in namespace \"ns\", kept 1\n",
-		},
-		{
-			name:        "Only use since with --all",
-			command:     []string{"delete", "-f", "--keep-since", "60", "-n", "ns"},
-			dynamic:     seeds[7].dynamicClient,
-			input:       seeds[7].pipelineClient,
-			inputStream: nil,
-			wantError:   true,
-			want:        "--keep-since option can only be used with --all",
+			want:        "3 expired PipelineRuns(Completed) has been deleted in namespace \"ns\", kept 1\n",
 		},
 		{
 			name:        "No mixing --keep-since and --keep",
@@ -356,7 +347,70 @@ func TestPipelineRunDelete(t *testing.T) {
 			input:       seeds[5].pipelineClient,
 			inputStream: nil,
 			wantError:   false,
+			want:        "Are you sure you want to delete all PipelineRuns in namespace \"ns\" (y/n): All PipelineRuns(Completed) deleted in namespace \"ns\"\n",
+		},
+		{
+			name:        "Delete all by default ignore-running",
+			command:     []string{"rm", "--all", "-n", "ns"},
+			dynamic:     seeds[5].dynamicClient,
+			input:       seeds[5].pipelineClient,
+			inputStream: nil,
+			wantError:   false,
+			want:        "Are you sure you want to delete all PipelineRuns in namespace \"ns\" (y/n): All PipelineRuns(Completed) deleted in namespace \"ns\"\n",
+		},
+		{
+			name:        "Delete all by explicit ignore-running true",
+			command:     []string{"rm", "--all", "-n", "ns", "--ignore-running=true"},
+			dynamic:     seeds[5].dynamicClient,
+			input:       seeds[5].pipelineClient,
+			inputStream: nil,
+			wantError:   false,
+			want:        "Are you sure you want to delete all PipelineRuns in namespace \"ns\" (y/n): All PipelineRuns(Completed) deleted in namespace \"ns\"\n",
+		},
+		{
+			name:        "Delete all by ignore-running false",
+			command:     []string{"rm", "--all", "-n", "ns", "--ignore-running=false"},
+			dynamic:     seeds[5].dynamicClient,
+			input:       seeds[5].pipelineClient,
+			inputStream: nil,
+			wantError:   false,
 			want:        "Are you sure you want to delete all PipelineRuns in namespace \"ns\" (y/n): All PipelineRuns deleted in namespace \"ns\"\n",
+		},
+		{
+			name:        "Delete all PipelineRuns older than 60mn associated with Pipeline pipeline",
+			command:     []string{"delete", "-f", "--pipeline", "pipeline", "--keep-since", "60", "-n", "ns"},
+			dynamic:     seeds[8].dynamicClient,
+			input:       seeds[8].pipelineClient,
+			inputStream: nil,
+			wantError:   false,
+			want:        "All but 3 expired PipelineRuns(Completed) associated with Pipeline \"pipeline\" deleted in namespace \"ns\"\n",
+		},
+		{
+			name:        "Delete all PipelineRuns older than 60mn 0 expired",
+			command:     []string{"delete", "-f", "--keep-since", "60", "--all", "-n", "ns"},
+			dynamic:     seeds[8].dynamicClient,
+			input:       seeds[8].pipelineClient,
+			inputStream: nil,
+			wantError:   false,
+			want:        "0 expired PipelineRuns(Completed) has been deleted in namespace \"ns\", kept 1\n",
+		},
+		{
+			name:        "Error --keep-since less than zero",
+			command:     []string{"delete", "-f", "--keep-since", "-1", "-n", "ns"},
+			dynamic:     seeds[7].dynamicClient,
+			input:       seeds[7].pipelineClient,
+			inputStream: nil,
+			wantError:   true,
+			want:        "keep-since option should not be lower than 0",
+		},
+		{
+			name:        "Error --keep-since, --all and --task cannot be used",
+			command:     []string{"delete", "-f", "--keep-since", "1", "--all", "-p", "foobar", "-n", "ns"},
+			dynamic:     seeds[7].dynamicClient,
+			input:       seeds[7].pipelineClient,
+			inputStream: nil,
+			wantError:   true,
+			want:        "--keep or --keep-since, --all and --pipeline cannot be used together",
 		},
 	}
 
@@ -504,7 +558,7 @@ func TestPipelineRunDelete_v1beta1(t *testing.T) {
 	}
 
 	seeds := make([]clients, 0)
-	for i := 0; i < 6; i++ {
+	for i := 0; i < 7; i++ {
 		cs, _ := test.SeedV1beta1TestData(t, pipelinev1beta1test.Data{
 			Pipelines:    pdata,
 			PipelineRuns: prdata,
@@ -611,7 +665,7 @@ func TestPipelineRunDelete_v1beta1(t *testing.T) {
 			input:       seeds[0].pipelineClient,
 			inputStream: strings.NewReader("y"),
 			wantError:   false,
-			want:        "Are you sure you want to delete all PipelineRuns related to Pipeline \"pipeline\" (y/n): All PipelineRuns associated with Pipeline \"pipeline\" deleted in namespace \"ns\"\n",
+			want:        "Are you sure you want to delete all PipelineRuns related to Pipeline \"pipeline\" (y/n): All PipelineRuns(Completed) associated with Pipeline \"pipeline\" deleted in namespace \"ns\"\n",
 		},
 		{
 			name:        "Delete all with prompt",
@@ -620,7 +674,7 @@ func TestPipelineRunDelete_v1beta1(t *testing.T) {
 			input:       seeds[3].pipelineClient,
 			inputStream: strings.NewReader("y"),
 			wantError:   false,
-			want:        "Are you sure you want to delete all PipelineRuns in namespace \"ns\" (y/n): All PipelineRuns deleted in namespace \"ns\"\n",
+			want:        "Are you sure you want to delete all PipelineRuns in namespace \"ns\" (y/n): All PipelineRuns(Completed) deleted in namespace \"ns\"\n",
 		},
 		{
 			name:        "Delete all with -f",
@@ -629,7 +683,7 @@ func TestPipelineRunDelete_v1beta1(t *testing.T) {
 			input:       seeds[4].pipelineClient,
 			inputStream: nil,
 			wantError:   false,
-			want:        "All PipelineRuns deleted in namespace \"ns\"\n",
+			want:        "All PipelineRuns(Completed) deleted in namespace \"ns\"\n",
 		},
 		{
 			name:        "Delete all keeping 2",
@@ -638,7 +692,7 @@ func TestPipelineRunDelete_v1beta1(t *testing.T) {
 			input:       seeds[4].pipelineClient,
 			inputStream: nil,
 			wantError:   false,
-			want:        "All but 2 PipelineRuns deleted in namespace \"ns\"\n",
+			want:        "All but 2 PipelineRuns(Completed) deleted in namespace \"ns\"\n",
 		},
 		{
 			name:        "Keep -1 is a no go",
@@ -674,7 +728,7 @@ func TestPipelineRunDelete_v1beta1(t *testing.T) {
 			input:       seeds[5].pipelineClient,
 			inputStream: strings.NewReader("y"),
 			wantError:   false,
-			want:        "Are you sure you want to delete all PipelineRuns related to Pipeline \"pipeline\" keeping 2 PipelineRuns (y/n): All but 2 PipelineRuns associated with Pipeline \"pipeline\" deleted in namespace \"ns\"\n",
+			want:        "Are you sure you want to delete all PipelineRuns related to Pipeline \"pipeline\" keeping 2 PipelineRuns (y/n): All but 2 PipelineRuns(Completed) associated with Pipeline \"pipeline\" deleted in namespace \"ns\"\n",
 		},
 		{
 			name:        "Error from using argument with --keep",
@@ -684,6 +738,69 @@ func TestPipelineRunDelete_v1beta1(t *testing.T) {
 			inputStream: strings.NewReader("y"),
 			wantError:   true,
 			want:        "--keep flag should not have any arguments specified with it",
+		},
+		{
+			name:        "Delete all PipelineRuns older than 60mn associated with Pipeline pipeline",
+			command:     []string{"delete", "-f", "--pipeline", "pipeline", "--keep-since", "60", "-n", "ns"},
+			dynamic:     seeds[6].dynamicClient,
+			input:       seeds[6].pipelineClient,
+			inputStream: nil,
+			wantError:   false,
+			want:        "All but 3 expired PipelineRuns(Completed) associated with Pipeline \"pipeline\" deleted in namespace \"ns\"\n",
+		},
+		{
+			name:        "Error on using --keep and --keep-since together",
+			command:     []string{"delete", "-f", "--keep-since", "60", "--keep", "2", "-n", "ns"},
+			dynamic:     seeds[5].dynamicClient,
+			input:       seeds[5].pipelineClient,
+			inputStream: nil,
+			wantError:   true,
+			want:        "cannot mix --keep and --keep-since options",
+		},
+		{
+			name:        "Error --keep-since less than zero",
+			command:     []string{"delete", "-f", "--keep-since", "-1", "-n", "ns"},
+			dynamic:     seeds[5].dynamicClient,
+			input:       seeds[5].pipelineClient,
+			inputStream: nil,
+			wantError:   true,
+			want:        "keep-since option should not be lower than 0",
+		},
+		{
+			name:        "Error --keep-since, --all and --task cannot be used",
+			command:     []string{"delete", "-f", "--keep-since", "1", "--all", "-p", "foobar", "-n", "ns"},
+			dynamic:     seeds[5].dynamicClient,
+			input:       seeds[5].pipelineClient,
+			inputStream: nil,
+			wantError:   true,
+			want:        "--keep or --keep-since, --all and --pipeline cannot be used together",
+		},
+		{
+			name:        "Delete all with explicit ignore-running true",
+			command:     []string{"rm", "--all", "-n", "ns", "--ignore-running=true"},
+			dynamic:     seeds[5].dynamicClient,
+			input:       seeds[5].pipelineClient,
+			inputStream: nil,
+			wantError:   false,
+			want:        "Are you sure you want to delete all PipelineRuns in namespace \"ns\" (y/n): All PipelineRuns(Completed) deleted in namespace \"ns\"\n",
+		},
+		{
+			name:        "Delete all with default ignore-running",
+			command:     []string{"rm", "--all", "-n", "ns"},
+			dynamic:     seeds[5].dynamicClient,
+			input:       seeds[5].pipelineClient,
+			inputStream: nil,
+			wantError:   false,
+			want:        "Are you sure you want to delete all PipelineRuns in namespace \"ns\" (y/n): All PipelineRuns(Completed) deleted in namespace \"ns\"\n",
+		},
+		{
+			name:        "Delete all with ignore-running false",
+			command:     []string{"rm", "--all", "-n", "ns", "--ignore-running=false"},
+			dynamic:     seeds[5].dynamicClient,
+			input:       seeds[5].pipelineClient,
+			inputStream: nil,
+			wantError:   false,
+			want:        "Are you sure you want to delete all PipelineRuns in namespace \"ns\" (y/n): All PipelineRuns deleted in namespace \"ns\"\n",
 		},
 	}
 
